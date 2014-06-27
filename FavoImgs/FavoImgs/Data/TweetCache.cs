@@ -1,10 +1,15 @@
-﻿using System;
+﻿#region
+
+using System;
 using System.Data.SQLite;
 using System.IO;
+using CoreTweet;
+
+#endregion
 
 namespace FavoImgs.Data
 {
-    public class TweetCache
+    public static class TweetCache
     {
         private static readonly string cachePath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
@@ -23,21 +28,18 @@ namespace FavoImgs.Data
                 if (!File.Exists(cachePath))
                     SQLiteConnection.CreateFile(cachePath);
 
-                string connstr = String.Format("Data Source={0};Version=3", cachePath);
-                SQLiteConnection conn = new SQLiteConnection(connstr);
+                var connstr = String.Format("Data Source={0};Version=3", cachePath);
+                var conn = new SQLiteConnection(connstr);
                 conn.Open();
 
-                SQLiteCommand cmd = new SQLiteCommand(conn);
+                var cmd = new SQLiteCommand(conn);
 
-                string query = String.Empty;
-
-                query =
-                    "CREATE TABLE [Favorites] (" +
-                    "[Id] bigint PRIMARY KEY NOT NULL," +
-                    "[CreatedAt] datetime NOT NULL," +
-                    "[UserId] bigint NOT NULL," +
-                    "[Text] nvarchar(140) NOT NULL," +
-                    "[State] int NOT NULL);";
+                var query = "CREATE TABLE [Favorites] (" +
+                               "[Id] bigint PRIMARY KEY NOT NULL," +
+                               "[CreatedAt] datetime NOT NULL," +
+                               "[UserId] bigint NOT NULL," +
+                               "[Text] nvarchar(140) NOT NULL," +
+                               "[State] int NOT NULL);";
 
                 cmd.CommandText = query;
                 cmd.ExecuteNonQuery();
@@ -64,10 +66,10 @@ namespace FavoImgs.Data
             try
             {
                 string connstr = String.Format("Data Source={0};Version=3", cachePath);
-                SQLiteConnection conn = new SQLiteConnection(connstr);
+                var conn = new SQLiteConnection(connstr);
                 conn.Open();
 
-                SQLiteCommand cmd = new SQLiteCommand(conn);
+                var cmd = new SQLiteCommand(conn);
 
                 string query = String.Empty;
 
@@ -89,10 +91,10 @@ namespace FavoImgs.Data
             try
             {
                 string connstr = String.Format("Data Source={0};Version=3", cachePath);
-                SQLiteConnection conn = new SQLiteConnection(connstr);
+                var conn = new SQLiteConnection(connstr);
                 conn.Open();
 
-                SQLiteCommand cmd = new SQLiteCommand(conn);
+                var cmd = new SQLiteCommand(conn);
 
                 string query = String.Empty;
 
@@ -113,10 +115,10 @@ namespace FavoImgs.Data
             try
             {
                 string connstr = String.Format("Data Source={0};Version=3", cachePath);
-                SQLiteConnection conn = new SQLiteConnection(connstr);
+                var conn = new SQLiteConnection(connstr);
                 conn.Open();
 
-                SQLiteCommand cmd = new SQLiteCommand(conn);
+                var cmd = new SQLiteCommand(conn);
 
                 string query = String.Empty;
 
@@ -137,10 +139,10 @@ namespace FavoImgs.Data
             try
             {
                 string connstr = String.Format("Data Source={0};Version=3", cachePath);
-                SQLiteConnection conn = new SQLiteConnection(connstr);
+                var conn = new SQLiteConnection(connstr);
                 conn.Open();
 
-                SQLiteCommand cmd = new SQLiteCommand(conn);
+                var cmd = new SQLiteCommand(conn);
 
                 string query = String.Empty;
 
@@ -162,10 +164,10 @@ namespace FavoImgs.Data
             try
             {
                 string connstr = String.Format("Data Source={0};Version=3", cachePath);
-                SQLiteConnection conn = new SQLiteConnection(connstr);
+                var conn = new SQLiteConnection(connstr);
                 conn.Open();
 
-                SQLiteCommand cmd = new SQLiteCommand(conn);
+                var cmd = new SQLiteCommand(conn);
 
                 string query = String.Empty;
 
@@ -187,10 +189,10 @@ namespace FavoImgs.Data
             try
             {
                 string connstr = String.Format("Data Source={0};Version=3", cachePath);
-                SQLiteConnection conn = new SQLiteConnection(connstr);
+                var conn = new SQLiteConnection(connstr);
                 conn.Open();
 
-                SQLiteCommand cmd = new SQLiteCommand(conn);
+                var cmd = new SQLiteCommand(conn);
 
                 string query = String.Empty;
 
@@ -206,15 +208,15 @@ namespace FavoImgs.Data
             }
         }
 
-        public static void Add(CoreTweet.Status status)
+        public static void Add(Status status)
         {
             try
             {
                 string connstr = String.Format("Data Source={0};Version=3", cachePath);
-                SQLiteConnection conn = new SQLiteConnection(connstr);
+                var conn = new SQLiteConnection(connstr);
                 conn.Open();
 
-                SQLiteCommand cmd = new SQLiteCommand(conn);
+                var cmd = new SQLiteCommand(conn);
 
                 string query = String.Empty;
 
