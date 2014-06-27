@@ -195,10 +195,11 @@ namespace FavoImgs
                 if (!String.IsNullOrEmpty(accessTokenSecret))
                     accessTokenSecret = RijndaelEncryption.DecryptRijndael(accessTokenSecret);
             }
-            catch
+            catch (Exception ex)
             {
                 Console.WriteLine("Cannot read OAuth Token!");
-                return 1;
+                accessToken = null;
+                accessTokenSecret = null;
             }
 
             Tokens tokens = null;
