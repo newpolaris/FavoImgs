@@ -1,4 +1,8 @@
-﻿using System;
+﻿using CoreTweet;
+using CoreTweet.Core;
+using FavoImgs.Data;
+using FavoImgs.Security;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
@@ -7,17 +11,15 @@ using System.Linq;
 using System.Net;
 using System.Reflection;
 using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Forms;
-using CoreTweet;
-using CoreTweet.Core;
-using FavoImgs.Data;
-using FavoImgs.Security;
 
 namespace FavoImgs
 {
     internal static class Program
     {
-        private static readonly string dataPath =
+        private static readonly string DataPath =
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "FavoImgs");
 
         private static void Initialize()
@@ -27,11 +29,11 @@ namespace FavoImgs
 
         private static void InitializeDataDirectory()
         {
-            if (String.IsNullOrEmpty(dataPath))
+            if (String.IsNullOrEmpty(DataPath))
                 throw new DirectoryNotFoundException();
 
-            if (!Directory.Exists(dataPath))
-                Directory.CreateDirectory(dataPath);
+            if (!Directory.Exists(DataPath))
+                Directory.CreateDirectory(DataPath);
         }
 
         private static string ShowTweet(Status tweet)
@@ -192,67 +194,136 @@ namespace FavoImgs
             if (!Directory.Exists(downloadPath))
                 Directory.CreateDirectory(downloadPath);
 
+            var files = Directory.GetFiles(downloadPath, "*.*",
+                            SearchOption.AllDirectories)
+                            .Where(s => s.EndsWith(".mp4") || s.EndsWith(".jpg") || s.EndsWith(".png"));
+
+
             const int count = 200;
             long maxId = 0;
-
             var bRemainTweet = true;
+
+            ListedResponse<Status> favorites = null;
+
             while (bRemainTweet)
             {
                 var arguments = new Dictionary<string, object> {{"count", count}};
                 if (maxId != 0) arguments.Add("max_id", maxId - 1);
 
-                ListedResponse<Status> favorites;
                 try
                 {
                     favorites = tokens.Favorites.List(arguments);
+                }
+                catch (TwitterException ex)
+                {
+                    // Too many request: Twitter limit exceeded
+                    if (ex.Status == (HttpStatusCode)429)
+                    {
+                        Console.WriteLine("Twitter API limit에 걸렸습니다. " +
+                                          "60초 뒤에 재시도 합니다~");
+                        if (favorites != null)
+                        {
+                            Console.WriteLine("limit이 풀리는 시간은 아래와 같습니다");
+                            Console.Write(favorites.RateLimit.Reset.LocalDateTime
+                                .ToString(CultureInfo.InvariantCulture));
+                            
+                        }
+                        Thread.Sleep(600000); // 60 초 동안 쉰다 
+                        continue;
+                    }
+                    Console.WriteLine(ex.Message);
+                    return 1;
                 }
                 catch (Exception ex)
                 {
                     Console.WriteLine(ex.Message);
                     return 1;
                 }
+                    
+                // update max id
+                maxId = favorites.Max(twt => twt.Id);
 
-                foreach (var twt in favorites)
+                Parallel.ForEach(favorites, twt =>
                 {
-                    maxId = maxId == 0 ? twt.Id : Math.Min(maxId, twt.Id);
-
-                    var twtxt = ShowTweet(twt);
-                    Console.WriteLine(twtxt);
-
-                    var dir = GetSubDirectoryName(
-                        Settings.Current.DownloadPath,
-                        Settings.Current.DirectoryNamingConvention,
-                        twt.CreatedAt, twt.User.ScreenName);
-
-                    if (!Directory.Exists(dir))
-                        Directory.CreateDirectory(dir);
+                    var pathnames = new List<string>();
+                    var uris = new List<string>();
 
                     if (twt.ExtendedEntities != null && twt.ExtendedEntities.Media != null)
                     {
-                        var wc = new WebClient();
-                        foreach (var media in twt.ExtendedEntities.Media)
+                        foreach (var uri in twt.ExtendedEntities.Media.Select(media => media.MediaUrl))
                         {
-                            var uri = media.MediaUrl;
-
-                            if (!IsImageFile(uri.ToString()))
-                                continue;
-
-                            Console.WriteLine(" - Downloading... {0} (Twitter image)", uri.ToString());
-
+                            var pathname = Path.Combine(downloadPath, uri.Segments.Last());
+                            if (File.Exists(pathname)) continue;
+                            pathnames.Add(pathname);
+                            uris.Add(ModifyImageUri(uri.ToString()));
+                        }
+                    }
+                    else if (twt.Entities.Urls != null)
+                    {
+                        foreach (var url in twt.Entities.Urls)
+                        {
                             try
                             {
-                                var newuri = ModifyImageUri(uri.ToString());
-                                wc.DownloadFile(newuri, Path.Combine(dir, uri.Segments.Last()));
+                                var uri = url.ExpandedUrl;
+                                var htmlCode = "";
+                                try
+                                {
+                                    var htmlwc = new WebClient();
+                                    htmlCode = htmlwc.DownloadString(uri);
+                                }
+                                // Ex: http://www.hibrain.net/hibrainWebApp/servlet/ExtraBoardManager;jsessionid=cbf601fa30d525c2695a62ba45f1af11a728c9fa9859.e34Sc30Qb3mSc40ObxiSchiSbNb0n6jAmljGr5XDqQLvpAe?extraboardCmd=view&menu_id=29&extraboard_id=132163&group_id=132129&program_code=10&list_type=list&pageno=1
+                                catch (WebException)
+                                {
+                                    continue;
+                                }
+
+                                var doc = new HtmlAgilityPack.HtmlDocument();
+                                doc.LoadHtml(htmlCode);
+
+                                var nodes = doc.DocumentNode.SelectNodes("//source");
+                                if (nodes == null) continue;
+
+                                foreach (var link in nodes)
+                                {
+                                    if (!link.Attributes.Any(x => x.Name == "type" && x.Value == "video/mp4"))
+                                        continue;
+
+                                    var attributes = link.Attributes.Where(x => x.Name == "video-src").ToList();
+                                    foreach (var att in attributes)
+                                    {
+                                        var pathname = Path.Combine(downloadPath, att.Value.Split('/').Last());
+                                        if (File.Exists(pathname)) continue;
+                                        pathnames.Add(pathname);
+                                        uris.Add(att.Value);
+                                    }
+                                }
                             }
                             catch (Exception ex)
                             {
-                                Console.WriteLine(ex.Message);
+                                Console.WriteLine(ex.ToString());
                             }
                         }
                     }
 
+                    var twtxt = ShowTweet(twt);
+                    Console.WriteLine(twtxt);
+
+                    var wc = new WebClient();
+                    for (var i = 0; i < uris.Count; i++)
+                    {
+                        try
+                        {
+                            Console.WriteLine(" - Downloading... {0} (Twitter image)", uris[i].ToString());
+                            wc.DownloadFile(uris[i], pathnames[i]);
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine(ex.Message);
+                        }
+                    }
+
                     Console.WriteLine();
-                }
+                });
 
                 Console.WriteLine("Limit: {0}/{1}, Reset: {2}",
                     favorites.RateLimit.Remaining,
