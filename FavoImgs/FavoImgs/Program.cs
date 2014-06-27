@@ -23,9 +23,6 @@ namespace FavoImgs
         private static void Initialize()
         {
             InitializeDataDirectory();
-
-            if (!TweetCache.IsCreated())
-                TweetCache.Create();
         }
 
         private static void InitializeDataDirectory()
@@ -221,14 +218,6 @@ namespace FavoImgs
                     var twtxt = ShowTweet(twt);
                     Console.WriteLine(twtxt);
 
-                    if (!TweetCache.IsExist(twt.Id))
-                        TweetCache.Add(twt);
-                    else if (TweetCache.IsImageTaken(twt.Id))
-                    {
-                        Console.WriteLine(" - already taken image. pass...\n");
-                        continue;
-                    }
-
                     var dir = GetSubDirectoryName(
                         Settings.Current.DownloadPath,
                         Settings.Current.DirectoryNamingConvention,
@@ -264,9 +253,9 @@ namespace FavoImgs
 
                     if (twt.ExtendedEntities != null && twt.ExtendedEntities.Media != null)
                     {
+                        var wc = new WebClient();
                         foreach (var media in twt.ExtendedEntities.Media)
                         {
-                            var wc = new WebClient();
                             var uri = media.MediaUrl;
 
                             if (!IsImageFile(uri.ToString()))
