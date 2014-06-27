@@ -127,12 +127,12 @@ namespace FavoImgs
 
             if (String.IsNullOrEmpty(accessToken) || String.IsNullOrEmpty(accessTokenSecret))
             {
-                OAuth.OAuthSession session = OAuth.Authorize(consumerKey, consumerSecret);
-                Uri url = session.AuthorizeUri;
+                var session = OAuth.Authorize(consumerKey, consumerSecret);
+                var url = session.AuthorizeUri;
                 Process.Start(url.ToString());
 
                 Console.Write("ENTER PIN: ");
-                string pin = Console.ReadLine();
+                var pin = Console.ReadLine();
 
                 tokens = session.GetTokens(pin);
 
@@ -192,13 +192,14 @@ namespace FavoImgs
             if (!Directory.Exists(downloadPath))
                 Directory.CreateDirectory(downloadPath);
 
+            const int count = 200;
             long maxId = 0;
 
-            for (var i = 0; i < 50; ++i)
+            var bRemainTweet = true;
+            while (bRemainTweet)
             {
-                var arguments = new Dictionary<string, object> {{"count", 200}};
-                if (maxId != 0)
-                    arguments.Add("max_id", maxId - 1);
+                var arguments = new Dictionary<string, object> {{"count", count}};
+                if (maxId != 0) arguments.Add("max_id", maxId - 1);
 
                 ListedResponse<Status> favorites;
                 try
@@ -226,31 +227,6 @@ namespace FavoImgs
                     if (!Directory.Exists(dir))
                         Directory.CreateDirectory(dir);
 
-                    var isAllDownloaded = true;
-                    if (twt.Entities.Urls != null)
-                    {
-                        foreach (var url in twt.Entities.Urls)
-                        {
-                            var wc = new WebClient();
-                            var uri = url.ExpandedUrl;
-
-                            if (!IsImageFile(uri.ToString()))
-                                continue;
-
-                            Console.WriteLine(" - Downloading... {0} (Url)", uri.ToString());
-
-                            try
-                            {
-                                wc.DownloadFile(uri, Path.Combine(dir, uri.Segments.Last()));
-                            }
-                            catch (Exception ex)
-                            {
-                                isAllDownloaded = false;
-                                Console.WriteLine(ex.Message);
-                            }
-                        }
-                    }
-
                     if (twt.ExtendedEntities != null && twt.ExtendedEntities.Media != null)
                     {
                         var wc = new WebClient();
@@ -270,38 +246,10 @@ namespace FavoImgs
                             }
                             catch (Exception ex)
                             {
-                                isAllDownloaded = false;
                                 Console.WriteLine(ex.Message);
                             }
                         }
                     }
-                    else if (twt.Entities.Media != null)
-                    {
-                        foreach (var media in twt.Entities.Media)
-                        {
-                            var wc = new WebClient();
-                            var uri = media.MediaUrl;
-
-                            if (!IsImageFile(uri.ToString()))
-                                continue;
-
-                            Console.WriteLine(" - Downloading... {0} (Twitter image)", uri.ToString());
-
-                            try
-                            {
-                                var newuri = ModifyImageUri(uri.ToString());
-                                wc.DownloadFile(newuri, Path.Combine(dir, uri.Segments.Last()));
-                            }
-                            catch (Exception ex)
-                            {
-                                isAllDownloaded = false;
-                                Console.WriteLine(ex.Message);
-                            }
-                        }
-                    }
-
-                    if (isAllDownloaded)
-                        TweetCache.SetImageTaken(twt.Id);
 
                     Console.WriteLine();
                 }
@@ -310,6 +258,9 @@ namespace FavoImgs
                     favorites.RateLimit.Remaining,
                     favorites.RateLimit.Limit,
                     favorites.RateLimit.Reset.LocalDateTime.ToString(CultureInfo.InvariantCulture));
+
+                if (favorites.Count < count)
+                    bRemainTweet = false;
             }
 
             Console.WriteLine("Press ENTER to exit...");
