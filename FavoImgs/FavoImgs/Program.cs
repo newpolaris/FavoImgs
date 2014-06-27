@@ -45,7 +45,7 @@ namespace FavoImgs
 
         private static void ShowAppInfo()
         {
-            Version version = Assembly.GetEntryAssembly().GetName().Version;
+            var version = Assembly.GetEntryAssembly().GetName().Version;
 
             Console.WriteLine("FavoImgs {0}, Copyright (c) 2014, Azyu (@_uyza_)", version);
             Console.WriteLine("http://github.com/azyu/FavoImgs");
@@ -130,12 +130,12 @@ namespace FavoImgs
 
             if (String.IsNullOrEmpty(accessToken) || String.IsNullOrEmpty(accessTokenSecret))
             {
-                var session = OAuth.Authorize(consumerKey, consumerSecret);
-                var url = session.AuthorizeUri;
+                OAuth.OAuthSession session = OAuth.Authorize(consumerKey, consumerSecret);
+                Uri url = session.AuthorizeUri;
                 Process.Start(url.ToString());
 
                 Console.Write("ENTER PIN: ");
-                var pin = Console.ReadLine();
+                string pin = Console.ReadLine();
 
                 tokens = session.GetTokens(pin);
 
@@ -160,10 +160,10 @@ namespace FavoImgs
             Settings.Load();
             CheckDownloadPath();
 
-            string consumerKey = Settings.Current.ConsumerKey;
-            string consumerSecret = Settings.Current.ConsumerSecret;
-            string accessToken = Settings.Current.AccessToken;
-            string accessTokenSecret = Settings.Current.AccessTokenSecret;
+            var consumerKey = Settings.Current.ConsumerKey;
+            var consumerSecret = Settings.Current.ConsumerSecret;
+            var accessToken = Settings.Current.AccessToken;
+            var accessTokenSecret = Settings.Current.AccessTokenSecret;
 
             try
             {
@@ -191,7 +191,7 @@ namespace FavoImgs
                 return 1;
             }
 
-            string downloadPath = Settings.Current.DownloadPath;
+            var downloadPath = Settings.Current.DownloadPath;
             if (!Directory.Exists(downloadPath))
                 Directory.CreateDirectory(downloadPath);
 
@@ -214,11 +214,11 @@ namespace FavoImgs
                     return 1;
                 }
 
-                foreach (Status twt in favorites)
+                foreach (var twt in favorites)
                 {
                     maxId = maxId == 0 ? twt.Id : Math.Min(maxId, twt.Id);
 
-                    string twtxt = ShowTweet(twt);
+                    var twtxt = ShowTweet(twt);
                     Console.WriteLine(twtxt);
 
                     if (!TweetCache.IsExist(twt.Id))
@@ -240,10 +240,10 @@ namespace FavoImgs
                     var isAllDownloaded = true;
                     if (twt.Entities.Urls != null)
                     {
-                        foreach (UrlEntity url in twt.Entities.Urls)
+                        foreach (var url in twt.Entities.Urls)
                         {
                             var wc = new WebClient();
-                            Uri uri = url.ExpandedUrl;
+                            var uri = url.ExpandedUrl;
 
                             if (!IsImageFile(uri.ToString()))
                                 continue;
@@ -264,7 +264,7 @@ namespace FavoImgs
 
                     if (twt.ExtendedEntities != null && twt.ExtendedEntities.Media != null)
                     {
-                        foreach (MediaEntity media in twt.ExtendedEntities.Media)
+                        foreach (var media in twt.ExtendedEntities.Media)
                         {
                             var wc = new WebClient();
                             var uri = media.MediaUrl;
@@ -276,7 +276,7 @@ namespace FavoImgs
 
                             try
                             {
-                                string newuri = ModifyImageUri(uri.ToString());
+                                var newuri = ModifyImageUri(uri.ToString());
                                 wc.DownloadFile(newuri, Path.Combine(dir, uri.Segments.Last()));
                             }
                             catch (Exception ex)
@@ -288,10 +288,10 @@ namespace FavoImgs
                     }
                     else if (twt.Entities.Media != null)
                     {
-                        foreach (MediaEntity media in twt.Entities.Media)
+                        foreach (var media in twt.Entities.Media)
                         {
                             var wc = new WebClient();
-                            Uri uri = media.MediaUrl;
+                            var uri = media.MediaUrl;
 
                             if (!IsImageFile(uri.ToString()))
                                 continue;
@@ -300,7 +300,7 @@ namespace FavoImgs
 
                             try
                             {
-                                string newuri = ModifyImageUri(uri.ToString());
+                                var newuri = ModifyImageUri(uri.ToString());
                                 wc.DownloadFile(newuri, Path.Combine(dir, uri.Segments.Last()));
                             }
                             catch (Exception ex)
