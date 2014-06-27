@@ -131,7 +131,7 @@ namespace FavoImgs
             // Twitter image
             if (uri.IndexOf("twimg.com") > 0)
             {
-                retval =  uri + ":orig";
+                retval =  uri + ":large";
             }
 
             return retval;
